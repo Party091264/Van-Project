@@ -30,12 +30,34 @@
       position: absolute;
       width: 70px;
       pointer-events: none;
+      transition: all 0.5s ease; /* 🔥 smooth movement */
     }
 
     #infoBox {
       margin-top: 15px;
       font-size: 20px;
       font-weight: bold;
+    }
+
+    #popup {
+      display: none;
+      position: fixed;
+      top: 20%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: white;
+      border: 2px solid black;
+      padding: 15px;
+      z-index: 10;
+    }
+
+    #popup img {
+      width: 250px;
+    }
+
+    #closeBtn {
+      margin-top: 10px;
+      cursor: pointer;
     }
   </style>
 </head>
@@ -51,25 +73,37 @@
 
 <div id="infoBox">Start in Birmingham, Alabama</div>
 
+<div id="popup">
+  <h2 id="popupTitle"></h2>
+  <img id="popupImg">
+  <div id="closeBtn">Close</div>
+</div>
+
 <script>
 const canvas = document.getElementById("road");
 const ctx = canvas.getContext("2d");
 const van = document.getElementById("van");
 const infoBox = document.getElementById("infoBox");
 
-// 📍 Adjust these coordinates if needed
+const popup = document.getElementById("popup");
+const popupTitle = document.getElementById("popupTitle");
+const popupImg = document.getElementById("popupImg");
+
+document.getElementById("closeBtn").onclick = () => popup.style.display = "none";
+
+// 📍 Cities with images
 const path = [
-  {x: 320, y: 500, name: "Birmingham, Alabama"},
-  {x: 370, y: 450, name: "Atlanta, Georgia"},
-  {x: 480, y: 300, name: "Washington D.C."},
-  {x: 530, y: 250, name: "Philadelphia, Pennsylvania"},
-  {x: 580, y: 200, name: "New York City, New York"}
+  {x: 320, y: 500, name: "Birmingham, Alabama", img: "birmingham.jpg"},
+  {x: 370, y: 450, name: "Atlanta, Georgia", img: "atlanta.jpg"},
+  {x: 480, y: 300, name: "Washington D.C.", img: "dc.jpg"},
+  {x: 530, y: 250, name: "Philadelphia, Pennsylvania", img: "philly.jpg"},
+  {x: 580, y: 200, name: "New York City, New York", img: "nyc.jpg"}
 ];
 
 let currentStop = 0;
 let isDragging = false;
 
-// Draw base path
+// 🔥 CURVED PATH
 function drawBasePath() {
   ctx.strokeStyle = "gray";
   ctx.lineWidth = 6;
@@ -77,27 +111,31 @@ function drawBasePath() {
   ctx.moveTo(path[0].x, path[0].y);
 
   for (let i = 1; i < path.length; i++) {
-    ctx.lineTo(path[i].x, path[i].y);
+    let midX = (path[i].x + path[i-1].x) / 2;
+    let midY = (path[i].y + path[i-1].y) / 2;
+
+    ctx.quadraticCurveTo(path[i-1].x, path[i-1].y, midX, midY);
   }
 
+  ctx.lineTo(path[path.length-1].x, path[path.length-1].y);
   ctx.stroke();
 }
 
-// Snap system
+// 🧲 SNAP + SMOOTH
 function snapToPoint(index) {
   let point = path[index];
 
-  // Move van
+  // smooth van movement
   van.style.left = (point.x - 35) + "px";
   van.style.top = (point.y - 35) + "px";
 
-  // Update text
   infoBox.textContent = point.name;
 
-  // Redraw progress line
+  // redraw
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawBasePath();
 
+  // progress path (green)
   ctx.strokeStyle = "lime";
   ctx.lineWidth = 6;
   ctx.beginPath();
@@ -109,7 +147,7 @@ function snapToPoint(index) {
 
   ctx.stroke();
 
-  // Mark visited points
+  // 🔥 draw city markers ON TOP of line
   ctx.fillStyle = "yellow";
   for (let i = 0; i <= index; i++) {
     ctx.beginPath();
@@ -117,20 +155,19 @@ function snapToPoint(index) {
     ctx.fill();
   }
 
-  // Final message
+  // show popup
+  popup.style.display = "block";
+  popupTitle.textContent = point.name;
+  popupImg.src = point.img;
+
   if (index === path.length - 1) {
     infoBox.textContent = "🎉 You made it to New York City!";
   }
 }
 
-// Mouse controls
-document.addEventListener("mousedown", () => {
-  isDragging = true;
-});
-
-document.addEventListener("mouseup", () => {
-  isDragging = false;
-});
+// dragging logic
+document.addEventListener("mousedown", () => isDragging = true);
+document.addEventListener("mouseup", () => isDragging = false);
 
 document.addEventListener("mousemove", (e) => {
   if (!isDragging) return;
@@ -139,24 +176,22 @@ document.addEventListener("mousemove", (e) => {
   let mouseX = e.clientX - rect.left;
   let mouseY = e.clientY - rect.top;
 
-  let nextPoint = path[currentStop + 1];
-  if (!nextPoint) return;
+  let next = path[currentStop + 1];
+  if (!next) return;
 
-  let dx = mouseX - nextPoint.x;
-  let dy = mouseY - nextPoint.y;
-  let distance = Math.sqrt(dx * dx + dy * dy);
+  let dx = mouseX - next.x;
+  let dy = mouseY - next.y;
+  let dist = Math.sqrt(dx*dx + dy*dy);
 
-  // SNAP DISTANCE (adjust if needed)
-  if (distance < 50) {
+  if (dist < 60) {
     currentStop++;
     snapToPoint(currentStop);
   }
 });
 
-// Initial draw
+// init
 drawBasePath();
 snapToPoint(0);
-
 </script>
 
 </body>
