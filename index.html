@@ -91,12 +91,21 @@ const path = [
 ];
 
 let dragging = false;
-let progress = 0; // 0 → 1 along full path
+let progress = 0;
+let lastMouseX = 0;
 
-// draw curved path (full or partial)
-function drawPath(p, color) {
+// 🎨 DRAW PATH (curved)
+function drawPath(p, color, glow=false) {
+  ctx.lineWidth = glow ? 12 : 6;
   ctx.strokeStyle = color;
-  ctx.lineWidth = 6;
+
+  if (glow) {
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = "lime";
+  } else {
+    ctx.shadowBlur = 0;
+  }
+
   ctx.beginPath();
   ctx.moveTo(path[0].x, path[0].y);
 
@@ -121,7 +130,7 @@ function drawPath(p, color) {
   ctx.stroke();
 }
 
-// update van position
+// 🚐 UPDATE VAN
 function updateVan() {
   let total = path.length - 1;
   let current = Math.floor(progress * total);
@@ -136,47 +145,47 @@ function updateVan() {
   van.style.left = (x - 35) + "px";
   van.style.top = (y - 35) + "px";
 
-  // snap detection
+  // popup logic
   let snapped = false;
   for (let i = 0; i < path.length; i++) {
-    let d = Math.hypot(x - path[i].x, y - path[i].y);
-    if (d < 10) {
+    if (Math.hypot(x - path[i].x, y - path[i].y) < 10) {
       snapped = true;
-      infoBox.textContent = path[i].name;
-
       popup.style.display = "block";
       popupTitle.textContent = path[i].name;
       popupImg.src = path[i].img;
+      infoBox.textContent = path[i].name;
     }
   }
 
-  if (!snapped) {
-    popup.style.display = "none";
-  }
+  if (!snapped) popup.style.display = "none";
 
   // redraw
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  drawPath(1, "gray");
-  drawPath(progress, "lime");
+  drawPath(1, "gray");          // full path
+  drawPath(progress, "lime", true); // glowing progress
 }
 
-// ONLY drag when clicking van
-van.addEventListener("mousedown", () => dragging = true);
+// 🎯 DRAG SYSTEM (RELATIVE = FIXES BACKWARDS)
+van.addEventListener("mousedown", (e) => {
+  dragging = true;
+  lastMouseX = e.clientX;
+});
+
 document.addEventListener("mouseup", () => dragging = false);
 
 document.addEventListener("mousemove", (e) => {
   if (!dragging) return;
 
-  let rect = canvas.getBoundingClientRect();
-  let mouseX = e.clientX - rect.left;
+  let dx = e.clientX - lastMouseX;
+  lastMouseX = e.clientX;
 
-  // convert horizontal movement into progress
-  progress = Math.max(0, Math.min(1, mouseX / rect.width));
+  progress += dx / 500; // sensitivity
+  progress = Math.max(0, Math.min(1, progress));
 
   updateVan();
 });
 
-// init
+// INIT
 updateVan();
 </script>
 
