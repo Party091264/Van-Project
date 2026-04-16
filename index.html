@@ -31,7 +31,7 @@
       position: absolute;
       width: 70px;
       cursor: grab;
-      transition: left 0.3s ease, top 0.3s ease;
+      transition: left 0.2s linear, top 0.2s linear;
     }
 
     #infoBox {
@@ -49,16 +49,10 @@
       background: white;
       border: 2px solid black;
       padding: 15px;
-      z-index: 10;
     }
 
     #popup img {
       width: 250px;
-    }
-
-    #closeBtn {
-      margin-top: 10px;
-      cursor: pointer;
     }
   </style>
 </head>
@@ -77,7 +71,6 @@
 <div id="popup">
   <h2 id="popupTitle"></h2>
   <img id="popupImg">
-  <div id="closeBtn">Close</div>
 </div>
 
 <script>
@@ -90,9 +83,7 @@ const popup = document.getElementById("popup");
 const popupTitle = document.getElementById("popupTitle");
 const popupImg = document.getElementById("popupImg");
 
-document.getElementById("closeBtn").onclick = () => popup.style.display = "none";
-
-// YOUR COORDINATES
+// YOUR COORDS
 const path = [
   {x: 648, y: 407, name: "Birmingham, Alabama", img: "birmingham.jpg"},
   {x: 691, y: 397, name: "Atlanta, Georgia", img: "atlanta.jpg"},
@@ -104,24 +95,23 @@ const path = [
 let currentStop = 0;
 let dragging = false;
 
-// draw curved base path
-function drawBasePath() {
-  ctx.strokeStyle = "gray";
+// 🔥 DRAW CURVED PATH (used for BOTH gray + green)
+function drawPath(upToIndex, color) {
+  ctx.strokeStyle = color;
   ctx.lineWidth = 6;
   ctx.beginPath();
   ctx.moveTo(path[0].x, path[0].y);
 
-  for (let i = 1; i < path.length; i++) {
+  for (let i = 1; i <= upToIndex; i++) {
     let midX = (path[i].x + path[i-1].x) / 2;
     let midY = (path[i].y + path[i-1].y) / 2;
     ctx.quadraticCurveTo(path[i-1].x, path[i-1].y, midX, midY);
   }
 
-  ctx.lineTo(path[path.length-1].x, path[path.length-1].y);
   ctx.stroke();
 }
 
-// snap to city
+// snap to point
 function snapToPoint(index) {
   let p = path[index];
 
@@ -131,36 +121,27 @@ function snapToPoint(index) {
   infoBox.textContent = p.name;
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  drawBasePath();
 
-  ctx.strokeStyle = "lime";
-  ctx.lineWidth = 6;
-  ctx.beginPath();
-  ctx.moveTo(path[0].x, path[0].y);
+  // full gray path
+  drawPath(path.length - 1, "gray");
 
-  for (let i = 1; i <= index; i++) {
-    ctx.lineTo(path[i].x, path[i].y);
-  }
+  // progress green path
+  drawPath(index, "lime");
 
-  ctx.stroke();
-
+  // dots on top
   ctx.fillStyle = "yellow";
   for (let i = 0; i <= index; i++) {
     ctx.beginPath();
-    ctx.arc(path[i].x, path[i].y, 7, 0, Math.PI * 2);
+    ctx.arc(path[i].x, path[i].y, 6, 0, Math.PI * 2);
     ctx.fill();
   }
 
   popup.style.display = "block";
   popupTitle.textContent = p.name;
   popupImg.src = p.img;
-
-  if (index === path.length - 1) {
-    infoBox.textContent = "🎉 You made it to New York City!";
-  }
 }
 
-// drag only when clicking van
+// ONLY drag van
 van.addEventListener("mousedown", () => dragging = true);
 document.addEventListener("mouseup", () => dragging = false);
 
@@ -174,24 +155,34 @@ document.addEventListener("mousemove", (e) => {
   let next = path[currentStop + 1];
   if (!next) return;
 
-  // follow mouse smoothly
-  van.style.left = (mouseX - 35) + "px";
-  van.style.top = (mouseY - 35) + "px";
+  // direction to next point
+  let dx = next.x - path[currentStop].x;
+  let dy = next.y - path[currentStop].y;
 
-  let dx = mouseX - next.x;
-  let dy = mouseY - next.y;
-  let dist = Math.sqrt(dx*dx + dy*dy);
+  let progressX = mouseX - path[currentStop].x;
+  let progressY = mouseY - path[currentStop].y;
 
-  if (dist < 50) {
+  let dot = (progressX * dx + progressY * dy) / (dx*dx + dy*dy);
+
+  // clamp between 0 and 1
+  dot = Math.max(0, Math.min(1, dot));
+
+  let x = path[currentStop].x + dx * dot;
+  let y = path[currentStop].y + dy * dot;
+
+  van.style.left = (x - 35) + "px";
+  van.style.top = (y - 35) + "px";
+
+  // snap when near next point
+  let dist = Math.hypot(mouseX - next.x, mouseY - next.y);
+  if (dist < 40) {
     currentStop++;
     snapToPoint(currentStop);
   }
 });
 
 // init
-drawBasePath();
 snapToPoint(0);
-
 </script>
 
 </body>
