@@ -30,7 +30,7 @@
       position: absolute;
       width: 70px;
       pointer-events: none;
-      transition: all 0.5s ease; /* 🔥 smooth movement */
+      transition: all 0.5s ease;
     }
 
     #infoBox {
@@ -71,7 +71,7 @@
   <img id="van" src="van.png">
 </div>
 
-<div id="infoBox">Start in Birmingham, Alabama</div>
+<div id="infoBox">Click map to find coordinates</div>
 
 <div id="popup">
   <h2 id="popupTitle"></h2>
@@ -91,19 +91,36 @@ const popupImg = document.getElementById("popupImg");
 
 document.getElementById("closeBtn").onclick = () => popup.style.display = "none";
 
-// 📍 Cities with images
+
+// ======================================
+// ✏️ PASTE YOUR COORDINATES HERE
+// ======================================
 const path = [
-  {x: 320, y: 500, name: "Birmingham, Alabama", img: "birmingham.jpg"},
-  {x: 370, y: 450, name: "Atlanta, Georgia", img: "atlanta.jpg"},
-  {x: 480, y: 300, name: "Washington D.C.", img: "dc.jpg"},
-  {x: 530, y: 250, name: "Philadelphia, Pennsylvania", img: "philly.jpg"},
-  {x: 580, y: 200, name: "New York City, New York", img: "nyc.jpg"}
+  {x: 0, y: 0, name: "Birmingham, Alabama", img: "birmingham.jpg"},
+  {x: 0, y: 0, name: "Atlanta, Georgia", img: "atlanta.jpg"},
+  {x: 0, y: 0, name: "Washington D.C.", img: "dc.jpg"},
+  {x: 0, y: 0, name: "Philadelphia, Pennsylvania", img: "philly.jpg"},
+  {x: 0, y: 0, name: "New York City, New York", img: "nyc.jpg"}
 ];
+// ======================================
+
 
 let currentStop = 0;
 let isDragging = false;
 
-// 🔥 CURVED PATH
+
+// 🧭 CLICK TO GET COORDS
+canvas.addEventListener("click", (e) => {
+  let rect = canvas.getBoundingClientRect();
+  let x = Math.round(e.clientX - rect.left);
+  let y = Math.round(e.clientY - rect.top);
+
+  console.log(`x: ${x}, y: ${y}`);
+  alert(`x: ${x}, y: ${y}`); // easier on phone
+});
+
+
+// 🛣️ CURVED PATH
 function drawBasePath() {
   ctx.strokeStyle = "gray";
   ctx.lineWidth = 6;
@@ -121,21 +138,20 @@ function drawBasePath() {
   ctx.stroke();
 }
 
-// 🧲 SNAP + SMOOTH
+
+// 🧲 SNAP SYSTEM
 function snapToPoint(index) {
   let point = path[index];
 
-  // smooth van movement
   van.style.left = (point.x - 35) + "px";
   van.style.top = (point.y - 35) + "px";
 
   infoBox.textContent = point.name;
 
-  // redraw
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawBasePath();
 
-  // progress path (green)
+  // progress line
   ctx.strokeStyle = "lime";
   ctx.lineWidth = 6;
   ctx.beginPath();
@@ -147,15 +163,15 @@ function snapToPoint(index) {
 
   ctx.stroke();
 
-  // 🔥 draw city markers ON TOP of line
-  ctx.fillStyle = "yellow";
-  for (let i = 0; i <= index; i++) {
+  // 🔴 DEBUG DOTS (helps you see placement)
+  ctx.fillStyle = "red";
+  path.forEach(p => {
     ctx.beginPath();
-    ctx.arc(path[i].x, path[i].y, 8, 0, Math.PI * 2);
+    ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
     ctx.fill();
-  }
+  });
 
-  // show popup
+  // popup
   popup.style.display = "block";
   popupTitle.textContent = point.name;
   popupImg.src = point.img;
@@ -165,7 +181,8 @@ function snapToPoint(index) {
   }
 }
 
-// dragging logic
+
+// 🖱️ DRAGGING
 document.addEventListener("mousedown", () => isDragging = true);
 document.addEventListener("mouseup", () => isDragging = false);
 
@@ -189,9 +206,11 @@ document.addEventListener("mousemove", (e) => {
   }
 });
 
-// init
+
+// INIT
 drawBasePath();
 snapToPoint(0);
+
 </script>
 
 </body>
