@@ -1,10 +1,13 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <title>East Coast Road Trip</title>
+
   <style>
     body {
       text-align: center;
       font-family: Arial;
+      background: #eee;
     }
 
     #map {
@@ -14,7 +17,7 @@
       margin: auto;
       background: url("map.jpg");
       background-size: cover;
-      border: 2px solid black;
+      border: 3px solid black;
     }
 
     canvas {
@@ -25,28 +28,28 @@
 
     #van {
       position: absolute;
-      width: 60px;
-      cursor: grab;
+      width: 70px;
       pointer-events: none;
     }
 
     #infoBox {
-      margin-top: 20px;
-      font-size: 18px;
+      margin-top: 15px;
+      font-size: 20px;
+      font-weight: bold;
     }
   </style>
 </head>
 
 <body>
 
-<h2>East Coast Road Trip 🚐</h2>
+<h1>East Coast Road Trip 🚐</h1>
 
 <div id="map">
   <canvas id="road" width="900" height="600"></canvas>
   <img id="van" src="van.png">
 </div>
 
-<div id="infoBox">Drag along the route</div>
+<div id="infoBox">Start in Birmingham, Alabama</div>
 
 <script>
 const canvas = document.getElementById("road");
@@ -54,18 +57,19 @@ const ctx = canvas.getContext("2d");
 const van = document.getElementById("van");
 const infoBox = document.getElementById("infoBox");
 
-// 📍 Path points (you can tweak these to match your map visually)
+// 📍 Adjust these coordinates if needed
 const path = [
-  {x: 300, y: 500, name: "Birmingham, Alabama"},
-  {x: 350, y: 450, name: "Atlanta, Georgia"},
-  {x: 450, y: 300, name: "Washington D.C."},
-  {x: 500, y: 250, name: "Philadelphia, Pennsylvania"},
-  {x: 550, y: 200, name: "New York City, New York"}
+  {x: 320, y: 500, name: "Birmingham, Alabama"},
+  {x: 370, y: 450, name: "Atlanta, Georgia"},
+  {x: 480, y: 300, name: "Washington D.C."},
+  {x: 530, y: 250, name: "Philadelphia, Pennsylvania"},
+  {x: 580, y: 200, name: "New York City, New York"}
 ];
 
-let progress = 0;
+let currentStop = 0;
+let isDragging = false;
 
-// Draw full path (gray line)
+// Draw base path
 function drawBasePath() {
   ctx.strokeStyle = "gray";
   ctx.lineWidth = 6;
@@ -79,63 +83,79 @@ function drawBasePath() {
   ctx.stroke();
 }
 
-// Draw filled path (green progress)
-function drawProgress(p) {
+// Snap system
+function snapToPoint(index) {
+  let point = path[index];
+
+  // Move van
+  van.style.left = (point.x - 35) + "px";
+  van.style.top = (point.y - 35) + "px";
+
+  // Update text
+  infoBox.textContent = point.name;
+
+  // Redraw progress line
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawBasePath();
+
   ctx.strokeStyle = "lime";
   ctx.lineWidth = 6;
   ctx.beginPath();
   ctx.moveTo(path[0].x, path[0].y);
 
-  let total = path.length - 1;
-  let current = Math.floor(p * total);
-  let t = (p * total) % 1;
-
-  for (let i = 1; i <= current; i++) {
+  for (let i = 1; i <= index; i++) {
     ctx.lineTo(path[i].x, path[i].y);
   }
 
-  if (current < total) {
-    let x = path[current].x + (path[current+1].x - path[current].x) * t;
-    let y = path[current].y + (path[current+1].y - path[current].y) * t;
-    ctx.lineTo(x, y);
+  ctx.stroke();
+
+  // Mark visited points
+  ctx.fillStyle = "yellow";
+  for (let i = 0; i <= index; i++) {
+    ctx.beginPath();
+    ctx.arc(path[i].x, path[i].y, 8, 0, Math.PI * 2);
+    ctx.fill();
   }
 
-  ctx.stroke();
+  // Final message
+  if (index === path.length - 1) {
+    infoBox.textContent = "🎉 You made it to New York City!";
+  }
 }
 
-// Move van along path
-function updateVan(p) {
-  let total = path.length - 1;
-  let current = Math.floor(p * total);
-  let t = (p * total) % 1;
+// Mouse controls
+document.addEventListener("mousedown", () => {
+  isDragging = true;
+});
 
-  let x = path[current].x + (path[current+1].x - path[current].x) * t;
-  let y = path[current].y + (path[current+1].y - path[current].y) * t;
+document.addEventListener("mouseup", () => {
+  isDragging = false;
+});
 
-  van.style.left = (x - 30) + "px";
-  van.style.top = (y - 30) + "px";
-
-  infoBox.textContent = path[current].name;
-}
-
-// Drag logic (horizontal slider style)
 document.addEventListener("mousemove", (e) => {
-  if (e.buttons !== 1) return;
+  if (!isDragging) return;
 
   let rect = canvas.getBoundingClientRect();
-  let x = e.clientX - rect.left;
+  let mouseX = e.clientX - rect.left;
+  let mouseY = e.clientY - rect.top;
 
-  progress = Math.max(0, Math.min(1, x / rect.width));
+  let nextPoint = path[currentStop + 1];
+  if (!nextPoint) return;
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  drawBasePath();
-  drawProgress(progress);
-  updateVan(progress);
+  let dx = mouseX - nextPoint.x;
+  let dy = mouseY - nextPoint.y;
+  let distance = Math.sqrt(dx * dx + dy * dy);
+
+  // SNAP DISTANCE (adjust if needed)
+  if (distance < 50) {
+    currentStop++;
+    snapToPoint(currentStop);
+  }
 });
 
 // Initial draw
 drawBasePath();
-updateVan(0);
+snapToPoint(0);
 
 </script>
 
