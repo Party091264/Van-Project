@@ -10,6 +10,25 @@
       background: #eee;
     }
 
+    h1 {
+      margin-bottom: 5px;
+    }
+
+    /* 📊 SMALL PROGRESS BAR */
+    #progressBar {
+      width: 250px;
+      height: 10px;
+      margin: 10px auto;
+      border: 2px solid black;
+      background: #ccc;
+    }
+
+    #progressFill {
+      height: 100%;
+      width: 0%;
+      background: lime;
+    }
+
     #map {
       position: relative;
       width: 900px;
@@ -60,6 +79,10 @@
 
 <h1>East Coast Road Trip 🚐</h1>
 
+<div id="progressBar">
+  <div id="progressFill"></div>
+</div>
+
 <div id="map">
   <canvas id="road" width="900" height="600"></canvas>
   <img id="van" src="van.png">
@@ -77,6 +100,7 @@ const canvas = document.getElementById("road");
 const ctx = canvas.getContext("2d");
 const van = document.getElementById("van");
 const infoBox = document.getElementById("infoBox");
+const progressFill = document.getElementById("progressFill");
 
 const popup = document.getElementById("popup");
 const popupTitle = document.getElementById("popupTitle");
@@ -92,19 +116,14 @@ const path = [
 
 let dragging = false;
 let progress = 0;
-let lastMouseX = 0;
+let lastX = 0;
 
-// 🎨 DRAW PATH (curved)
+// DRAW CURVED PATH
 function drawPath(p, color, glow=false) {
   ctx.lineWidth = glow ? 12 : 6;
   ctx.strokeStyle = color;
-
-  if (glow) {
-    ctx.shadowBlur = 15;
-    ctx.shadowColor = "lime";
-  } else {
-    ctx.shadowBlur = 0;
-  }
+  ctx.shadowBlur = glow ? 15 : 0;
+  ctx.shadowColor = "lime";
 
   ctx.beginPath();
   ctx.moveTo(path[0].x, path[0].y);
@@ -130,7 +149,7 @@ function drawPath(p, color, glow=false) {
   ctx.stroke();
 }
 
-// 🚐 UPDATE VAN
+// UPDATE VAN
 function updateVan() {
   let total = path.length - 1;
   let current = Math.floor(progress * total);
@@ -145,7 +164,7 @@ function updateVan() {
   van.style.left = (x - 35) + "px";
   van.style.top = (y - 35) + "px";
 
-  // popup logic
+  // POPUP
   let snapped = false;
   for (let i = 0; i < path.length; i++) {
     if (Math.hypot(x - path[i].x, y - path[i].y) < 10) {
@@ -159,16 +178,31 @@ function updateVan() {
 
   if (!snapped) popup.style.display = "none";
 
-  // redraw
+  // DRAW
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  drawPath(1, "gray");          // full path
-  drawPath(progress, "lime", true); // glowing progress
+  drawPath(1, "gray");
+  drawPath(progress, "lime", true);
+
+  // 🔴 BIGGER CITY DOTS
+  ctx.fillStyle = "yellow";
+  ctx.strokeStyle = "black";
+  ctx.lineWidth = 2;
+
+  for (let i = 0; i < path.length; i++) {
+    ctx.beginPath();
+    ctx.arc(path[i].x, path[i].y, 12, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  // 📊 UPDATE PROGRESS BAR
+  progressFill.style.width = (progress * 100) + "%";
 }
 
-// 🎯 DRAG SYSTEM (RELATIVE = FIXES BACKWARDS)
+// DRAGGING
 van.addEventListener("mousedown", (e) => {
   dragging = true;
-  lastMouseX = e.clientX;
+  lastX = e.clientX;
 });
 
 document.addEventListener("mouseup", () => dragging = false);
@@ -176,10 +210,10 @@ document.addEventListener("mouseup", () => dragging = false);
 document.addEventListener("mousemove", (e) => {
   if (!dragging) return;
 
-  let dx = e.clientX - lastMouseX;
-  lastMouseX = e.clientX;
+  let dx = e.clientX - lastX;
+  lastX = e.clientX;
 
-  progress += dx / 500; // sensitivity
+  progress += dx / 200;
   progress = Math.max(0, Math.min(1, progress));
 
   updateVan();
