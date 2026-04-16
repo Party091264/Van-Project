@@ -29,8 +29,8 @@
     #van {
       position: absolute;
       width: 70px;
-      pointer-events: none;
-      transition: all 0.5s ease;
+      cursor: grab;
+      transition: left 0.3s ease, top 0.3s ease;
     }
 
     #infoBox {
@@ -71,7 +71,7 @@
   <img id="van" src="van.png">
 </div>
 
-<div id="infoBox">Click map to find coordinates</div>
+<div id="infoBox">Start in Birmingham, Alabama</div>
 
 <div id="popup">
   <h2 id="popupTitle"></h2>
@@ -91,34 +91,17 @@ const popupImg = document.getElementById("popupImg");
 
 document.getElementById("closeBtn").onclick = () => popup.style.display = "none";
 
-
-// ======================================
-// ✏️ PASTE YOUR COORDINATES HERE
-// ======================================
+// 📍 YOUR COORDINATES
 const path = [
-  {x: 0, y: 0, name: "Birmingham, Alabama", img: "birmingham.jpg"},
-  {x: 0, y: 0, name: "Atlanta, Georgia", img: "atlanta.jpg"},
-  {x: 0, y: 0, name: "Washington D.C.", img: "dc.jpg"},
-  {x: 0, y: 0, name: "Philadelphia, Pennsylvania", img: "philly.jpg"},
-  {x: 0, y: 0, name: "New York City, New York", img: "nyc.jpg"}
+  {x: 648, y: 407, name: "Birmingham, Alabama", img: "birmingham.jpg"},
+  {x: 691, y: 397, name: "Atlanta, Georgia", img: "atlanta.jpg"},
+  {x: 799, y: 267, name: "Washington D.C.", img: "dc.jpg"},
+  {x: 824, y: 239, name: "Philadelphia, Pennsylvania", img: "philly.jpg"},
+  {x: 839, y: 217, name: "New York City, New York", img: "nyc.jpg"}
 ];
-// ======================================
-
 
 let currentStop = 0;
-let isDragging = false;
-
-
-// 🧭 CLICK TO GET COORDS
-canvas.addEventListener("click", (e) => {
-  let rect = canvas.getBoundingClientRect();
-  let x = Math.round(e.clientX - rect.left);
-  let y = Math.round(e.clientY - rect.top);
-
-  console.log(`x: ${x}, y: ${y}`);
-  alert(`x: ${x}, y: ${y}`); // easier on phone
-});
-
+let dragging = false;
 
 // 🛣️ CURVED PATH
 function drawBasePath() {
@@ -130,7 +113,6 @@ function drawBasePath() {
   for (let i = 1; i < path.length; i++) {
     let midX = (path[i].x + path[i-1].x) / 2;
     let midY = (path[i].y + path[i-1].y) / 2;
-
     ctx.quadraticCurveTo(path[i-1].x, path[i-1].y, midX, midY);
   }
 
@@ -138,15 +120,14 @@ function drawBasePath() {
   ctx.stroke();
 }
 
-
-// 🧲 SNAP SYSTEM
+// 🧲 SNAP
 function snapToPoint(index) {
-  let point = path[index];
+  let p = path[index];
 
-  van.style.left = (point.x - 35) + "px";
-  van.style.top = (point.y - 35) + "px";
+  van.style.left = (p.x - 35) + "px";
+  van.style.top = (p.y - 35) + "px";
 
-  infoBox.textContent = point.name;
+  infoBox.textContent = p.name;
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawBasePath();
@@ -163,31 +144,30 @@ function snapToPoint(index) {
 
   ctx.stroke();
 
-  // 🔴 DEBUG DOTS (helps you see placement)
-  ctx.fillStyle = "red";
-  path.forEach(p => {
+  // cities on top
+  ctx.fillStyle = "yellow";
+  for (let i = 0; i <= index; i++) {
     ctx.beginPath();
-    ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
+    ctx.arc(path[i].x, path[i].y, 7, 0, Math.PI * 2);
     ctx.fill();
-  });
+  }
 
   // popup
   popup.style.display = "block";
-  popupTitle.textContent = point.name;
-  popupImg.src = point.img;
+  popupTitle.textContent = p.name;
+  popupImg.src = p.img;
 
   if (index === path.length - 1) {
     infoBox.textContent = "🎉 You made it to New York City!";
   }
 }
 
-
-// 🖱️ DRAGGING
-document.addEventListener("mousedown", () => isDragging = true);
-document.addEventListener("mouseup", () => isDragging = false);
+// 🎯 ONLY DRAG WHEN CLICKING VAN
+van.addEventListener("mousedown", () => dragging = true);
+document.addEventListener("mouseup", () => dragging = false);
 
 document.addEventListener("mousemove", (e) => {
-  if (!isDragging) return;
+  if (!dragging) return;
 
   let rect = canvas.getBoundingClientRect();
   let mouseX = e.clientX - rect.left;
@@ -200,12 +180,16 @@ document.addEventListener("mousemove", (e) => {
   let dy = mouseY - next.y;
   let dist = Math.sqrt(dx*dx + dy*dy);
 
-  if (dist < 60) {
+  // smooth approach (van follows mouse slightly)
+  van.style.left = (mouseX - 35) + "px";
+  van.style.top = (mouseY - 35) + "px";
+
+  // snap when close
+  if (dist < 50) {
     currentStop++;
     snapToPoint(currentStop);
   }
 });
-
 
 // INIT
 drawBasePath();
