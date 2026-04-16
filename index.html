@@ -31,7 +31,6 @@
       position: absolute;
       width: 70px;
       cursor: grab;
-      transition: left 0.2s linear, top 0.2s linear;
     }
 
     #infoBox {
@@ -83,7 +82,6 @@ const popup = document.getElementById("popup");
 const popupTitle = document.getElementById("popupTitle");
 const popupImg = document.getElementById("popupImg");
 
-// YOUR COORDS
 const path = [
   {x: 648, y: 407, name: "Birmingham, Alabama", img: "birmingham.jpg"},
   {x: 691, y: 397, name: "Atlanta, Georgia", img: "atlanta.jpg"},
@@ -92,56 +90,77 @@ const path = [
   {x: 839, y: 217, name: "New York City, New York", img: "nyc.jpg"}
 ];
 
-let currentStop = 0;
 let dragging = false;
+let progress = 0; // 0 → 1 along full path
 
-// 🔥 DRAW CURVED PATH (used for BOTH gray + green)
-function drawPath(upToIndex, color) {
+// draw curved path (full or partial)
+function drawPath(p, color) {
   ctx.strokeStyle = color;
   ctx.lineWidth = 6;
   ctx.beginPath();
   ctx.moveTo(path[0].x, path[0].y);
 
-  for (let i = 1; i <= upToIndex; i++) {
+  let total = path.length - 1;
+  let current = Math.floor(p * total);
+  let t = (p * total) % 1;
+
+  for (let i = 1; i <= current; i++) {
     let midX = (path[i].x + path[i-1].x) / 2;
     let midY = (path[i].y + path[i-1].y) / 2;
     ctx.quadraticCurveTo(path[i-1].x, path[i-1].y, midX, midY);
   }
 
+  if (current < total) {
+    let a = path[current];
+    let b = path[current + 1];
+    let x = a.x + (b.x - a.x) * t;
+    let y = a.y + (b.y - a.y) * t;
+    ctx.lineTo(x, y);
+  }
+
   ctx.stroke();
 }
 
-// snap to point
-function snapToPoint(index) {
-  let p = path[index];
+// update van position
+function updateVan() {
+  let total = path.length - 1;
+  let current = Math.floor(progress * total);
+  let t = (progress * total) % 1;
 
-  van.style.left = (p.x - 35) + "px";
-  van.style.top = (p.y - 35) + "px";
+  let a = path[current];
+  let b = path[Math.min(current + 1, total)];
 
-  infoBox.textContent = p.name;
+  let x = a.x + (b.x - a.x) * t;
+  let y = a.y + (b.y - a.y) * t;
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  van.style.left = (x - 35) + "px";
+  van.style.top = (y - 35) + "px";
 
-  // full gray path
-  drawPath(path.length - 1, "gray");
+  // snap detection
+  let snapped = false;
+  for (let i = 0; i < path.length; i++) {
+    let d = Math.hypot(x - path[i].x, y - path[i].y);
+    if (d < 10) {
+      snapped = true;
+      infoBox.textContent = path[i].name;
 
-  // progress green path
-  drawPath(index, "lime");
-
-  // dots on top
-  ctx.fillStyle = "yellow";
-  for (let i = 0; i <= index; i++) {
-    ctx.beginPath();
-    ctx.arc(path[i].x, path[i].y, 6, 0, Math.PI * 2);
-    ctx.fill();
+      popup.style.display = "block";
+      popupTitle.textContent = path[i].name;
+      popupImg.src = path[i].img;
+    }
   }
 
-  popup.style.display = "block";
-  popupTitle.textContent = p.name;
-  popupImg.src = p.img;
+  if (!snapped) {
+    popup.style.display = "none";
+  }
+
+  // redraw
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawPath(1, "gray");
+  drawPath(progress, "lime");
 }
 
-// ONLY drag van
+// ONLY drag when clicking van
 van.addEventListener("mousedown", () => dragging = true);
 document.addEventListener("mouseup", () => dragging = false);
 
@@ -150,39 +169,15 @@ document.addEventListener("mousemove", (e) => {
 
   let rect = canvas.getBoundingClientRect();
   let mouseX = e.clientX - rect.left;
-  let mouseY = e.clientY - rect.top;
 
-  let next = path[currentStop + 1];
-  if (!next) return;
+  // convert horizontal movement into progress
+  progress = Math.max(0, Math.min(1, mouseX / rect.width));
 
-  // direction to next point
-  let dx = next.x - path[currentStop].x;
-  let dy = next.y - path[currentStop].y;
-
-  let progressX = mouseX - path[currentStop].x;
-  let progressY = mouseY - path[currentStop].y;
-
-  let dot = (progressX * dx + progressY * dy) / (dx*dx + dy*dy);
-
-  // clamp between 0 and 1
-  dot = Math.max(0, Math.min(1, dot));
-
-  let x = path[currentStop].x + dx * dot;
-  let y = path[currentStop].y + dy * dot;
-
-  van.style.left = (x - 35) + "px";
-  van.style.top = (y - 35) + "px";
-
-  // snap when near next point
-  let dist = Math.hypot(mouseX - next.x, mouseY - next.y);
-  if (dist < 40) {
-    currentStop++;
-    snapToPoint(currentStop);
-  }
+  updateVan();
 });
 
 // init
-snapToPoint(0);
+updateVan();
 </script>
 
 </body>
