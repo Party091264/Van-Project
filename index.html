@@ -1,42 +1,33 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Van Project</title>
   <style>
     body {
-      font-family: Arial;
       text-align: center;
+      font-family: Arial;
     }
 
     #map {
       position: relative;
-      width: 800px;
-      height: 500px;
+      width: 900px;
+      height: 600px;
       margin: auto;
-      background: #d0ecff;
+      background: url("map.jpg");
+      background-size: cover;
       border: 2px solid black;
     }
 
-    #van {
-      width: 50px;
-      height: 50px;
-      background: orange;
+    canvas {
       position: absolute;
-      top: 20px;
-      left: 20px;
-      cursor: grab;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 30px;
+      top: 0;
+      left: 0;
     }
 
-    .point {
-      width: 60px;
-      height: 60px;
-      background: red;
+    #van {
       position: absolute;
-      border-radius: 50%;
+      width: 60px;
+      cursor: grab;
+      pointer-events: none;
     }
 
     #infoBox {
@@ -48,71 +39,104 @@
 
 <body>
 
-<h1>Road Trip Project 🚐</h1>
+<h2>East Coast Road Trip 🚐</h2>
 
 <div id="map">
-  <div id="van">🚐</div>
-
-  <div class="point" style="top:100px; left:150px;" data-info="This is stop 1"></div>
-  <div class="point" style="top:300px; left:200px;" data-info="This is stop 2"></div>
-  <div class="point" style="top:200px; left:500px;" data-info="This is stop 3"></div>
-  <div class="point" style="top:400px; left:600px;" data-info="This is stop 4"></div>
-  <div class="point" style="top:50px; left:650px;" data-info="This is stop 5"></div>
+  <canvas id="road" width="900" height="600"></canvas>
+  <img id="van" src="van.png">
 </div>
 
-<div id="infoBox">Drag the van to a location</div>
+<div id="infoBox">Drag along the route</div>
 
 <script>
+const canvas = document.getElementById("road");
+const ctx = canvas.getContext("2d");
 const van = document.getElementById("van");
-const points = document.querySelectorAll(".point");
 const infoBox = document.getElementById("infoBox");
 
-let dragging = false;
+// 📍 Path points (you can tweak these to match your map visually)
+const path = [
+  {x: 300, y: 500, name: "Birmingham, Alabama"},
+  {x: 350, y: 450, name: "Atlanta, Georgia"},
+  {x: 450, y: 300, name: "Washington D.C."},
+  {x: 500, y: 250, name: "Philadelphia, Pennsylvania"},
+  {x: 550, y: 200, name: "New York City, New York"}
+];
 
-// Start dragging
-van.addEventListener("mousedown", () => {
-  dragging = true;
-});
+let progress = 0;
 
-// Stop dragging
-document.addEventListener("mouseup", () => {
-  dragging = false;
-});
+// Draw full path (gray line)
+function drawBasePath() {
+  ctx.strokeStyle = "gray";
+  ctx.lineWidth = 6;
+  ctx.beginPath();
+  ctx.moveTo(path[0].x, path[0].y);
 
-// Move van with mouse
-document.addEventListener("mousemove", (e) => {
-  if (!dragging) return;
+  for (let i = 1; i < path.length; i++) {
+    ctx.lineTo(path[i].x, path[i].y);
+  }
 
-  const mapRect = document.getElementById("map").getBoundingClientRect();
-
-  let x = e.clientX - mapRect.left - 25;
-  let y = e.clientY - mapRect.top - 25;
-
-  van.style.left = x + "px";
-  van.style.top = y + "px";
-
-  checkCollision();
-});
-
-// Detect when van touches a point
-function checkCollision() {
-  const vanRect = van.getBoundingClientRect();
-
-  points.forEach(point => {
-    const pointRect = point.getBoundingClientRect();
-
-    const isTouching =
-      vanRect.left < pointRect.right &&
-      vanRect.right > pointRect.left &&
-      vanRect.top < pointRect.bottom &&
-      vanRect.bottom > pointRect.top;
-
-    if (isTouching) {
-      infoBox.textContent = point.dataset.info;
-      point.style.background = "green"; // mark visited
-    }
-  });
+  ctx.stroke();
 }
+
+// Draw filled path (green progress)
+function drawProgress(p) {
+  ctx.strokeStyle = "lime";
+  ctx.lineWidth = 6;
+  ctx.beginPath();
+  ctx.moveTo(path[0].x, path[0].y);
+
+  let total = path.length - 1;
+  let current = Math.floor(p * total);
+  let t = (p * total) % 1;
+
+  for (let i = 1; i <= current; i++) {
+    ctx.lineTo(path[i].x, path[i].y);
+  }
+
+  if (current < total) {
+    let x = path[current].x + (path[current+1].x - path[current].x) * t;
+    let y = path[current].y + (path[current+1].y - path[current].y) * t;
+    ctx.lineTo(x, y);
+  }
+
+  ctx.stroke();
+}
+
+// Move van along path
+function updateVan(p) {
+  let total = path.length - 1;
+  let current = Math.floor(p * total);
+  let t = (p * total) % 1;
+
+  let x = path[current].x + (path[current+1].x - path[current].x) * t;
+  let y = path[current].y + (path[current+1].y - path[current].y) * t;
+
+  van.style.left = (x - 30) + "px";
+  van.style.top = (y - 30) + "px";
+
+  infoBox.textContent = path[current].name;
+}
+
+// Drag logic (horizontal slider style)
+document.addEventListener("mousemove", (e) => {
+  if (e.buttons !== 1) return;
+
+  let rect = canvas.getBoundingClientRect();
+  let x = e.clientX - rect.left;
+
+  progress = Math.max(0, Math.min(1, x / rect.width));
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawBasePath();
+  drawProgress(progress);
+  updateVan(progress);
+});
+
+// Initial draw
+drawBasePath();
+updateVan(0);
+
 </script>
 
 </body>
