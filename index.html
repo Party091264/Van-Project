@@ -16,7 +16,8 @@
       height: 600px;
       margin: auto;
       background: url("map.jpg");
-      background-size: cover;
+      background-size: 900px 600px;
+      background-repeat: no-repeat;
       border: 3px solid black;
     }
 
@@ -91,7 +92,7 @@ const popupImg = document.getElementById("popupImg");
 
 document.getElementById("closeBtn").onclick = () => popup.style.display = "none";
 
-// 📍 YOUR COORDINATES
+// YOUR COORDINATES
 const path = [
   {x: 648, y: 407, name: "Birmingham, Alabama", img: "birmingham.jpg"},
   {x: 691, y: 397, name: "Atlanta, Georgia", img: "atlanta.jpg"},
@@ -103,7 +104,7 @@ const path = [
 let currentStop = 0;
 let dragging = false;
 
-// 🛣️ CURVED PATH
+// draw curved base path
 function drawBasePath() {
   ctx.strokeStyle = "gray";
   ctx.lineWidth = 6;
@@ -120,7 +121,7 @@ function drawBasePath() {
   ctx.stroke();
 }
 
-// 🧲 SNAP
+// snap to city
 function snapToPoint(index) {
   let p = path[index];
 
@@ -132,7 +133,6 @@ function snapToPoint(index) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawBasePath();
 
-  // progress line
   ctx.strokeStyle = "lime";
   ctx.lineWidth = 6;
   ctx.beginPath();
@@ -144,7 +144,6 @@ function snapToPoint(index) {
 
   ctx.stroke();
 
-  // cities on top
   ctx.fillStyle = "yellow";
   for (let i = 0; i <= index; i++) {
     ctx.beginPath();
@@ -152,7 +151,6 @@ function snapToPoint(index) {
     ctx.fill();
   }
 
-  // popup
   popup.style.display = "block";
   popupTitle.textContent = p.name;
   popupImg.src = p.img;
@@ -162,7 +160,7 @@ function snapToPoint(index) {
   }
 }
 
-// 🎯 ONLY DRAG WHEN CLICKING VAN
+// drag only when clicking van
 van.addEventListener("mousedown", () => dragging = true);
 document.addEventListener("mouseup", () => dragging = false);
 
@@ -176,22 +174,21 @@ document.addEventListener("mousemove", (e) => {
   let next = path[currentStop + 1];
   if (!next) return;
 
+  // follow mouse smoothly
+  van.style.left = (mouseX - 35) + "px";
+  van.style.top = (mouseY - 35) + "px";
+
   let dx = mouseX - next.x;
   let dy = mouseY - next.y;
   let dist = Math.sqrt(dx*dx + dy*dy);
 
-  // smooth approach (van follows mouse slightly)
-  van.style.left = (mouseX - 35) + "px";
-  van.style.top = (mouseY - 35) + "px";
-
-  // snap when close
   if (dist < 50) {
     currentStop++;
     snapToPoint(currentStop);
   }
 });
 
-// INIT
+// init
 drawBasePath();
 snapToPoint(0);
 
